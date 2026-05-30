@@ -249,13 +249,12 @@ export function PortalHeader({
           </DropdownMenuContent>
         </DropdownMenu>
       ) : openAuthPopover && portalAuthEnabled ? (
-        // Anonymous user with auth popover available - show login/signup buttons
+        // Calupet fork: single sign-in path. The "Sign up" button is removed —
+        // an account is created on the first "Sign in with Calupet" (Auth0
+        // passwordless) login, so a separate sign-up affordance is redundant.
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => openAuthPopover({ mode: 'login' })}>
+          <Button size="sm" onClick={() => openAuthPopover({ mode: 'login' })}>
             <FormattedMessage id="portal.header.auth.logIn" defaultMessage="Log in" />
-          </Button>
-          <Button size="sm" onClick={() => openAuthPopover({ mode: 'signup' })}>
-            <FormattedMessage id="portal.header.auth.signUp" defaultMessage="Sign up" />
           </Button>
         </div>
       ) : null}

@@ -480,93 +480,31 @@ export function PortalAuthFormInline({
   // Stage 1 — email entry
   // ============================================================
   if (view.stage === 'email') {
+    // Calupet fork: the only sign-in path is "Sign in with Calupet" (the Auth0
+    // passwordless OIDC). The email/password/magic-link form, the "or" divider,
+    // and the signup mode-switch are removed so the popup offers a single,
+    // unambiguous action. The other stages below are retained but unreachable.
     return (
-      <div className="space-y-6">
-        {showOAuth && (
-          <>
-            <div className="space-y-3">
-              {enabledProviders.map((provider) => {
-                const IconComp = AUTH_PROVIDER_ICON_MAP[provider.id]
-                return (
-                  <OAuthButton
-                    key={provider.id}
-                    icon={IconComp ? <IconComp className="h-5 w-5" /> : null}
-                    label={provider.name}
-                    mode={mode}
-                    loading={loadingAction === provider.id}
-                    disabled={loadingAction !== null}
-                    onClick={() => initiateOAuth(provider)}
-                  />
-                )
-              })}
-            </div>
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-background px-2 text-muted-foreground">or</span>
-              </div>
-            </div>
-          </>
-        )}
-
-        <form onSubmit={continueFromEmail} className="space-y-4">
-          {error && <FormError message={error} />}
-          <div className="space-y-2">
-            <label htmlFor="inline-email" className="text-sm font-medium">
-              Email
-            </label>
-            <Input
-              id="inline-email"
-              type="email"
-              autoComplete="email"
-              autoFocus
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loadingAction !== null}
-              required
-            />
-          </div>
-          <Button
-            type="submit"
-            disabled={loadingAction !== null || !email.trim()}
-            className="w-full"
-          >
-            {loadingAction === 'continue' ? (
-              <ArrowPathIcon className="h-4 w-4 animate-spin" />
-            ) : (
-              <>Continue &rarr;</>
-            )}
-          </Button>
-        </form>
-
-        {onModeSwitch && (
+      <div className="space-y-4">
+        {error && <FormError message={error} />}
+        {showOAuth ? (
+          enabledProviders.map((provider) => {
+            const IconComp = AUTH_PROVIDER_ICON_MAP[provider.id]
+            return (
+              <OAuthButton
+                key={provider.id}
+                icon={IconComp ? <IconComp className="h-5 w-5" /> : null}
+                label={provider.name}
+                mode={mode}
+                loading={loadingAction === provider.id}
+                disabled={loadingAction !== null}
+                onClick={() => initiateOAuth(provider)}
+              />
+            )
+          })
+        ) : (
           <p className="text-center text-sm text-muted-foreground">
-            {mode === 'login' ? (
-              <>
-                New here?{' '}
-                <button
-                  type="button"
-                  onClick={() => onModeSwitch('signup')}
-                  className="text-primary hover:underline font-medium"
-                >
-                  Create an account
-                </button>
-              </>
-            ) : (
-              <>
-                Have an account?{' '}
-                <button
-                  type="button"
-                  onClick={() => onModeSwitch('login')}
-                  className="text-primary hover:underline font-medium"
-                >
-                  Sign in
-                </button>
-              </>
-            )}
+            Sign-in is temporarily unavailable. Please try again shortly.
           </p>
         )}
       </div>
