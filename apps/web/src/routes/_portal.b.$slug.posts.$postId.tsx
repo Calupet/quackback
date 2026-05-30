@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useIntl } from 'react-intl'
-import { createFileRoute, notFound, useRouteContext } from '@tanstack/react-router'
+import { createFileRoute, notFound, redirect, useRouteContext } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { BackLink } from '@/components/ui/back-link'
 import { portalDetailQueries, type PublicPostDetailView } from '@/lib/client/queries/portal-detail'
@@ -36,10 +36,16 @@ import type { TiptapContent } from '@/lib/shared/schemas/posts'
 export const Route = createFileRoute('/_portal/b/$slug/posts/$postId')({
   loader: async ({ params, context }) => {
     const { slug, postId: postIdParam } = params
-    const { settings, queryClient } = context
+    const { settings, queryClient, session } = context
 
     if (!settings) {
       throw notFound()
+    }
+
+    // Calupet fork (R2 gate): post content requires login. Anonymous visitors
+    // are sent to the portal home, which shows a "log in to see posts" prompt.
+    if (!session?.user) {
+      throw redirect({ to: '/' })
     }
 
     if (!isValidTypeId(postIdParam, 'post')) {

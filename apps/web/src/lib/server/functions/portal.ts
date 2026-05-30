@@ -11,7 +11,7 @@ import {
   type UserId,
 } from '@quackback/ids'
 import type { BoardSettings } from '@/lib/server/db'
-import { getOptionalAuth, hasAuthCredentials } from './auth-helpers'
+import { getOptionalAuth, hasAuthCredentials, isPortalViewerLoggedIn } from './auth-helpers'
 import { isTeamMember } from '@/lib/shared/roles'
 import { db, principal as principalTable, user as userTable, eq, inArray } from '@/lib/server/db'
 import { getPublicUrlOrNull } from '@/lib/server/storage/s3'
@@ -76,6 +76,26 @@ export const fetchPortalData = createServerFn({ method: 'GET' })
   .inputValidator(fetchPortalDataSchema)
   .handler(async ({ data }) => {
     console.log(`[fn:portal] fetchPortalData: boardSlug=${data.boardSlug}, sort=${data.sort}`)
+
+    // Calupet fork (R2 gate): anonymous visitors see board titles/pages but not
+    // posts. Keep the public board list + taxonomy; withhold posts behind login.
+    if (!(await isPortalViewerLoggedIn())) {
+      const [boardsRaw, statuses, tags] = await Promise.all([
+        listPublicBoardsWithStats(),
+        listPublicStatuses(),
+        listPublicTags(),
+      ])
+      return {
+        boards: boardsRaw.map((b) => ({ ...b, settings: (b.settings ?? {}) as BoardSettings })),
+        posts: { items: [], hasMore: false, total: -1 },
+        statuses,
+        tags,
+        votedPostIds: [] as PostId[],
+        principalId: null,
+        requiresLogin: true,
+      }
+    }
+
     // Run ALL queries in parallel for maximum performance
     // Member lookup and votes run independently alongside posts/boards/statuses/tags
     const [memberResult, boardsRaw, postsResult, statuses, tags, allVotedPosts] = await Promise.all(
@@ -139,6 +159,7 @@ export const fetchPortalData = createServerFn({ method: 'GET' })
       tags,
       votedPostIds,
       principalId,
+      requiresLogin: false,
     }
   })
 
@@ -173,6 +194,8 @@ export const fetchPublicPostDetail = createServerFn({ method: 'GET' })
     console.log(`[fn:portal] fetchPublicPostDetail: postId=${data.postId}`)
     // Only fetch auth if user has a session cookie (for highlighting own comments)
     const auth = hasAuthCredentials() ? await getOptionalAuth() : null
+    // Calupet fork (R2 gate): post content (incl. comments) requires login.
+    if (!auth?.user) return null
     const principalId = auth?.principal?.id
     const isTeamMember = auth?.principal?.role === 'admin' || auth?.principal?.role === 'member'
     const result = await getPublicPostDetail(data.postId as PostId, principalId, {
@@ -223,6 +246,10 @@ export const fetchPublicPosts = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     console.log(`[fn:portal] fetchPublicPosts: boardSlug=${data.boardSlug}, sort=${data.sort}`)
     try {
+      // Calupet fork (R2 gate): posts require login.
+      if (!(await isPortalViewerLoggedIn())) {
+        return { items: [], hasMore: false, total: 0 }
+      }
       const result = await listPublicPosts({ ...data, page: 1, limit: 20 })
       return {
         ...result,

@@ -24,6 +24,9 @@ import {
 } from '@/lib/client/hooks/use-portal-posts-query'
 import type { PublicPostListItem } from '@/lib/shared/types'
 import { cn } from '@/lib/shared/utils'
+import { Button } from '@/components/ui/button'
+import { LockClosedIcon } from '@heroicons/react/24/outline'
+import { useAuthPopoverSafe } from '@/components/auth/auth-popover-context'
 
 interface FeedbackContainerProps {
   workspaceName: string
@@ -44,6 +47,9 @@ interface FeedbackContainerProps {
   anonymousVotingEnabled?: boolean
   /** Welcome card to render above the post list. Undefined / disabled = hidden. */
   welcomeCard?: PortalWelcomeCardData
+  /** Calupet fork (R2): when true, board titles stay visible but the post list
+   *  is replaced with a "log in to see posts" prompt. */
+  requiresLogin?: boolean
 }
 
 export function FeedbackContainer({
@@ -62,10 +68,12 @@ export function FeedbackContainer({
   user,
   anonymousVotingEnabled = false,
   welcomeCard,
+  requiresLogin = false,
 }: FeedbackContainerProps): React.ReactElement {
   const intl = useIntl()
   const router = useRouter()
   const { session } = useRouteContext({ from: '__root__' })
+  const authPopover = useAuthPopoverSafe()
   const { filters, setFilters, clearFilters, activeFilterCount } = usePublicFilters()
 
   // List key for animations - only updates when data finishes loading
@@ -251,7 +259,33 @@ export function FeedbackContainer({
           </div>
 
           <div className="mt-5">
-            {posts.length === 0 && !isLoading ? (
+            {requiresLogin ? (
+              <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+                <LockClosedIcon className="h-10 w-10 text-muted-foreground" />
+                <div className="space-y-1">
+                  <p className="text-base font-medium text-foreground">
+                    {intl.formatMessage({
+                      id: 'portal.feedback.list.loginToSeePostsTitle',
+                      defaultMessage: 'Log in to see posts',
+                    })}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {intl.formatMessage({
+                      id: 'portal.feedback.list.loginToSeePostsDescription',
+                      defaultMessage: 'Sign in to read feedback, vote, and join the discussion.',
+                    })}
+                  </p>
+                </div>
+                {authPopover && (
+                  <Button onClick={() => authPopover.openAuthPopover({ mode: 'login' })}>
+                    {intl.formatMessage({
+                      id: 'portal.feedback.list.loginCta',
+                      defaultMessage: 'Log in',
+                    })}
+                  </Button>
+                )}
+              </div>
+            ) : posts.length === 0 && !isLoading ? (
               <p className="text-muted-foreground text-center py-8">
                 {activeSearch || activeFilterCount > 0
                   ? intl.formatMessage({

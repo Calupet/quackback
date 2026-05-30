@@ -214,3 +214,16 @@ export async function getOptionalAuth(): Promise<AuthContext | null> {
     throw error
   }
 }
+
+/**
+ * Calupet fork (R2 gate): is there a logged-in portal viewer?
+ *
+ * Keeps board titles/pages public while requiring login to view
+ * posts / comments / votes. Cheap for anonymous visitors — returns early on
+ * the missing session cookie (or Bearer token) without touching the database.
+ */
+export async function isPortalViewerLoggedIn(): Promise<boolean> {
+  if (!hasAuthCredentials()) return false
+  const ctx = await getOptionalAuth()
+  return !!ctx?.user
+}

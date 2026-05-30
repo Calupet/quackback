@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { FormattedMessage } from 'react-intl'
 import { z } from 'zod'
@@ -17,7 +17,12 @@ const searchSchema = z.object({
 export const Route = createFileRoute('/_portal/roadmap/')({
   validateSearch: searchSchema,
   loader: async ({ context }) => {
-    const { queryClient, settings, baseUrl, userRole } = context
+    const { queryClient, settings, baseUrl, userRole, session } = context
+
+    // Calupet fork (R2 gate): the roadmap is post content — require login.
+    if (!session?.user) {
+      throw redirect({ to: '/' })
+    }
 
     const [roadmaps] = await Promise.all([
       queryClient.ensureQueryData(portalQueries.roadmaps()),

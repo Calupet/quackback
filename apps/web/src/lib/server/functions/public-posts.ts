@@ -16,7 +16,12 @@ import {
 import { tiptapContentSchema } from '@/lib/shared/schemas/posts'
 import { sanitizeTiptapContent } from '@/lib/server/sanitize-tiptap'
 import { getRequestHeaders } from '@tanstack/react-start/server'
-import { getOptionalAuth, requireAuth, hasAuthCredentials } from './auth-helpers'
+import {
+  getOptionalAuth,
+  requireAuth,
+  hasAuthCredentials,
+  isPortalViewerLoggedIn,
+} from './auth-helpers'
 import { getSettings } from './workspace'
 import { listPublicPosts, getAllUserVotedPostIds } from '@/lib/server/domains/posts/post.public'
 import {
@@ -130,7 +135,10 @@ export const listPublicPostsFn = createServerFn({ method: 'GET' })
       `[fn:public-posts] listPublicPostsFn: sort=${data.sort}, board=${data.boardSlug || 'all'}`
     )
     try {
-      // No auth needed - this is public data
+      // Calupet fork (R2 gate): anonymous visitors must log in to see posts.
+      if (!(await isPortalViewerLoggedIn())) {
+        return { items: [], hasMore: false, total: 0 }
+      }
       const result = await listPublicPosts({
         boardSlug: data.boardSlug,
         search: data.search,

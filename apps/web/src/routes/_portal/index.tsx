@@ -184,6 +184,7 @@ function PublicPortalPage() {
         user={user}
         anonymousVotingEnabled={anonymousVotingEnabled}
         welcomeCard={welcomeCard}
+        requiresLogin={!session?.user}
       />
     </div>
   )
