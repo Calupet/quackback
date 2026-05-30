@@ -100,3 +100,32 @@ export const lookupAuthMethodsFn = createServerFn({ method: 'POST' })
       ssoEnabled: true,
     }
   })
+
+/**
+ * Calupet fork: build the Auth0 RP-initiated (federated) logout URL.
+ *
+ * Quackback's own signOut only clears the local Better-Auth session — the Auth0
+ * IdP session survives, so the next "Sign in with Calupet" silently re-uses the
+ * live SSO session instead of re-prompting for the email code. After clearing
+ * the local session the portal header redirects here so Auth0 ends its session
+ * too, then returns the browser to the portal.
+ *
+ * Derives the Auth0 origin from the configured OIDC discovery URL. Returns null
+ * when SSO isn't configured (caller falls back to a plain local sign-out).
+ * `returnTo` must be registered in the Auth0 application's Allowed Logout URLs.
+ */
+export const getPortalLogoutUrl = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<string | null> => {
+    const { getTenantSettings } = await import('@/lib/server/domains/settings/settings.service')
+    const sso = (await getTenantSettings())?.authConfig?.ssoOidc
+    if (!sso?.enabled || !sso.clientId || !sso.discoveryUrl) return null
+    let origin: string
+    try {
+      origin = new URL(sso.discoveryUrl).origin
+    } catch {
+      return null
+    }
+    const returnTo = process.env.BASE_URL || 'https://feedback.calu.pet'
+    return `${origin}/v2/logout?client_id=${encodeURIComponent(sso.clientId)}&returnTo=${encodeURIComponent(returnTo)}`
+  }
+)

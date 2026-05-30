@@ -7,6 +7,7 @@ import { cn } from '@/lib/shared/utils'
 import { isTeamMember } from '@/lib/shared/roles'
 import { Button } from '@/components/ui/button'
 import { signOut } from '@/lib/client/auth-client'
+import { getPortalLogoutUrl } from '@/lib/server/functions/auth'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -109,6 +110,20 @@ export function PortalHeader({
     // Clear user-scoped caches so stale reaction/vote highlights don't persist
     queryClient.invalidateQueries({ queryKey: ['portal', 'post'] })
     queryClient.invalidateQueries({ queryKey: ['votedPosts'] })
+    // Calupet fork: federated logout. signOut() above only clears the local
+    // Better-Auth session; redirecting to Auth0's logout ends the IdP session
+    // too, so the next "Sign in with Calupet" re-prompts for the email code
+    // instead of silently re-using the live SSO session. Auth0 returns the
+    // browser to the portal. Falls back to local navigation if SSO is off.
+    try {
+      const logoutUrl = await getPortalLogoutUrl()
+      if (logoutUrl) {
+        window.location.href = logoutUrl
+        return
+      }
+    } catch {
+      // ignore and fall through to a plain local sign-out
+    }
     router.invalidate() // Refetch session
     router.navigate({ to: '/' })
   }
